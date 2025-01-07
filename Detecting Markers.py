@@ -1,41 +1,58 @@
 import cv2
 import numpy as np
 
-def detect_markers(image_path, canny_threshold1=50, canny_threshold2=150, shi_tomasi_max_corners=100, shi_tomasi_quality_level=0.01, shi_tomasi_min_distance=10):
-    """
-    Detect edges and corners in an image using Canny edge detection and Shi-Tomasi corner detection.
+class DetectingMarkers:
+    def __init__(self):
+        self.image_with_corners = None
+        self.corners = None
 
-    Args:
-        image_path (str): Path to the input image.
-        canny_threshold1 (int): First threshold for Canny edge detection.
-        canny_threshold2 (int): Second threshold for Canny edge detection.
-        shi_tomasi_max_corners (int): Maximum number of corners to detect using Shi-Tomasi.
-        shi_tomasi_quality_level (float): Quality level for Shi-Tomasi corner detection.
-        shi_tomasi_min_distance (int): Minimum distance between detected corners.
+    def detect(self, image_path):
+        """
+        Detect markers (edges and corners) in an image.
+        :param image_path: Path to the input image.
+        :return: True if markers are detected, False otherwise.
+        """
+        # Load the image
+        image = cv2.imread(image_path)
+        if image is None:
+            print(f"Failed to load image: {image_path}")
+            return False
 
-    Returns:
-        edges (numpy.ndarray): Image with edges detected using Canny.
-        image_shi_tomasi (numpy.ndarray): Image with corners detected using Shi-Tomasi.
-    """
-    # Load the image
-    image = cv2.imread(image_path)
-    if image is None:
-        print(f"Failed to load image: {image_path}")
-        return None, None
+        # Convert the image to grayscale
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # Edge Detection (Canny Edge Detector)
+        edges = cv2.Canny(gray, threshold1=50, threshold2=150)  # Adjust thresholds as needed
 
-    # Edge Detection (Canny Edge Detector)
-    edges = cv2.Canny(gray, threshold1=canny_threshold1, threshold2=canny_threshold2)
+        # Corner Detection (Shi-Tomasi Corner Detector)
+        self.corners = cv2.goodFeaturesToTrack(gray, maxCorners=100, qualityLevel=0.01, minDistance=10)
+        self.image_with_corners = image.copy()
+        if self.corners is not None:
+            self.corners = np.int32(self.corners)  # Use np.int32 instead of np.int0
+            for corner in self.corners:
+                x, y = corner.ravel()
+                cv2.circle(self.image_with_corners, (x, y), 5, (0, 255, 0), -1)  # Mark corners in green
 
-    # Corner Detection (Shi-Tomasi Corner Detector)
-    shi_tomasi_corners = cv2.goodFeaturesToTrack(gray, maxCorners=shi_tomasi_max_corners, qualityLevel=shi_tomasi_quality_level, minDistance=shi_tomasi_min_distance)
-    image_shi_tomasi = image.copy()
-    if shi_tomasi_corners is not None:
-        shi_tomasi_corners = np.int32(shi_tomasi_corners)  # Use np.int32 instead of np.int0
-        for corner in shi_tomasi_corners:
-            x, y = corner.ravel()
-            cv2.circle(image_shi_tomasi, (x, y), 5, (0, 255, 0), -1)  # Mark corners in green
+        # Display the results
+        cv2.imshow('Original Image', image)
+        cv2.imshow('Canny Edge Detection', edges)
+        cv2.imshow('Shi-Tomasi Corner Detection', self.image_with_corners)
 
-    return edges, image_shi_tomasi
+        # Wait for a key press and close windows
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+        return True
+
+    def get_corners(self):
+        """
+        Get the detected corners.
+        :return: List of corner coordinates.
+        """
+        return self.corners
+
+if __name__ == "__main__":
+    # Run the marker detection if this script is executed directly
+    detector = DetectingMarkers()
+    image_path = 'checkerboards/Checkerboard-A4-25mm-10x7.jpg'  # Replace with your image path
+    detector.detect(image_path)
